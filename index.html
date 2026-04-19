@@ -424,12 +424,23 @@
 
 <div id="toast"></div>
 
-<script>
-  let state = JSON.parse(localStorage.getItem('simonstore') || 'null') || { productos: [], ventas: [] };
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, doc, onSnapshot, addDoc, deleteDoc, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  function save() { localStorage.setItem('simonstore', JSON.stringify(state)); }
+  const app = initializeApp({
+    apiKey: "AIzaSyCEyqC7f1AJ7eywEcpssE1jwhpFVmfEJaE",
+    authDomain: "simonstore.firebaseapp.com",
+    projectId: "simonstore",
+    storageBucket: "simonstore.firebasestorage.app",
+    messagingSenderId: "535884301574",
+    appId: "1:535884301574:web:731803cfc633504ccb4a87"
+  });
+  const db = getFirestore(app);
 
-  // Navigation
+  let productos = [];
+  let ventas    = [];
+
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -440,7 +451,6 @@
     });
   });
 
-  // Toast
   function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -448,129 +458,106 @@
     setTimeout(() => t.classList.remove('show'), 2800);
   }
 
-  // Reset
-  function resetAll() {
-    if (!confirm('¿Seguro? Se borrarán todos los productos y ventas.')) return;
-    state = { productos: [], ventas: [] };
-    save(); render();
-    toast('🗑️ Datos borrados');
-  }
-
-  // Formato moneda
   function fmt(n) { return '$' + Number(n).toLocaleString('es-CO'); }
 
-  // ── PRODUCTOS ──
-  function agregarProducto() {
+  window.resetAll = async () => {
+    if (!confirm('¿Seguro? Se borrarán todos los productos y ventas.')) return;
+    const batch = writeBatch(db);
+    productos.forEach(p => batch.delete(doc(db, 'productos', p._id)));
+    ventas.forEach(v => batch.delete(doc(db, 'ventas', v._id)));
+    await batch.commit();
+    toast('🗑️ Datos borrados');
+  };
+
+  window.agregarProducto = async () => {
     const nombre = document.getElementById('p-nombre').value.trim();
     const costo  = parseFloat(document.getElementById('p-costo').value);
     const venta  = parseFloat(document.getElementById('p-venta').value);
     const stock  = parseInt(document.getElementById('p-stock').value);
-
-    if (!nombre)                        return toast('⚠️ Escribe el nombre');
-    if (isNaN(costo) || costo < 0)      return toast('⚠️ Precio de costo inválido');
-    if (isNaN(venta) || venta < 0)      return toast('⚠️ Precio de venta inválido');
-    if (isNaN(stock) || stock < 0)      return toast('⚠️ Stock inválido');
-    if (venta < costo)                  return toast('⚠️ El precio de venta debe ser ≥ al costo');
-
-    state.productos.push({ id: Date.now(), nombre, costo, venta, stock });
-    save(); render();
+    if (!nombre)                   return toast('⚠️ Escribe el nombre');
+    if (isNaN(costo) || costo < 0) return toast('⚠️ Precio de costo inválido');
+    if (isNaN(venta) || venta < 0) return toast('⚠️ Precio de venta inválido');
+    if (isNaN(stock) || stock < 0) return toast('⚠️ Stock inválido');
+    if (venta < costo)             return toast('⚠️ El precio de venta debe ser ≥ al costo');
+    await addDoc(collection(db, 'productos'), { nombre, costo, venta, stock, creadoEn: Date.now() });
     toast(`🎉 "${nombre}" agregado`);
     ['p-nombre','p-costo','p-venta','p-stock'].forEach(id => document.getElementById(id).value = '');
-  }
+  };
 
-  function eliminarProducto(id) {
+  window.eliminarProducto = async (id) => {
     if (!confirm('¿Eliminar este producto?')) return;
-    state.productos = state.productos.filter(p => p.id !== id);
-    save(); render();
+    await deleteDoc(doc(db, 'productos', id));
     toast('🗑️ Producto eliminado');
-  }
+  };
 
-  // ── VENTAS ──
   document.getElementById('v-producto').addEventListener('change', actualizarPreview);
   document.getElementById('v-cantidad').addEventListener('input', actualizarPreview);
   document.getElementById('v-precio').addEventListener('input', actualizarPreview);
 
   function actualizarPreview() {
-    const pid      = parseInt(document.getElementById('v-producto').value);
+    const pid      = document.getElementById('v-producto').value;
     const cantidad = parseInt(document.getElementById('v-cantidad').value) || 0;
-    const producto = state.productos.find(p => p.id === pid);
+    const producto = productos.find(p => p._id === pid);
     const box      = document.getElementById('venta-preview');
-
     if (!producto || cantidad <= 0) { box.style.display = 'none'; return; }
-
     const custom = parseFloat(document.getElementById('v-precio').value);
     const precio = (!isNaN(custom) && custom > 0) ? custom : producto.venta;
-    const total    = precio * cantidad;
-    const ganancia = (precio - producto.costo) * cantidad;
-
     box.style.display = 'block';
     document.getElementById('venta-preview-text').innerHTML =
-      `<b>${cantidad}</b> × ${producto.nombre} @ <b>${fmt(precio)}</b> =
-       <b style="color:var(--green)">${fmt(total)}</b> &nbsp;|&nbsp;
-       Ganancia: <b style="color:var(--yellow)">${fmt(ganancia)}</b>`;
+      `<b>${cantidad}</b> × ${producto.nombre} @ <b>${fmt(precio)}</b> = ` +
+      `<b style="color:var(--green)">${fmt(precio * cantidad)}</b> &nbsp;|&nbsp; ` +
+      `Ganancia: <b style="color:var(--yellow)">${fmt((precio - producto.costo) * cantidad)}</b>`;
   }
 
-  function registrarVenta() {
-    const pid      = parseInt(document.getElementById('v-producto').value);
+  window.registrarVenta = async () => {
+    const pid      = document.getElementById('v-producto').value;
     const cantidad = parseInt(document.getElementById('v-cantidad').value);
-    const producto = state.productos.find(p => p.id === pid);
-
+    const producto = productos.find(p => p._id === pid);
     if (!producto)                        return toast('⚠️ Selecciona un producto');
     if (isNaN(cantidad) || cantidad <= 0) return toast('⚠️ Cantidad inválida');
     if (cantidad > producto.stock)        return toast(`⚠️ Solo hay ${producto.stock} unidades`);
-
-    const custom = parseFloat(document.getElementById('v-precio').value);
-    const precio = (!isNaN(custom) && custom > 0) ? custom : producto.venta;
-
-    producto.stock -= cantidad;
-    state.ventas.push({
-      id: Date.now(),
+    const custom   = parseFloat(document.getElementById('v-precio').value);
+    const precio   = (!isNaN(custom) && custom > 0) ? custom : producto.venta;
+    const total    = precio * cantidad;
+    const ganancia = (precio - producto.costo) * cantidad;
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'productos', pid), { stock: producto.stock - cantidad });
+    batch.set(doc(collection(db, 'ventas')), {
       fecha: new Date().toLocaleString('es-CO', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' }),
-      productoId: producto.id,
-      nombre: producto.nombre,
-      cantidad,
-      precio,
-      total: precio * cantidad,
-      ganancia: (precio - producto.costo) * cantidad
+      productoId: pid, nombre: producto.nombre,
+      cantidad, precio, total, ganancia, creadoEn: Date.now()
     });
-
-    save(); render();
-    toast(`🎉 Venta registrada!`);
+    await batch.commit();
+    toast('🎉 Venta registrada!');
     document.getElementById('v-producto').value = '';
     document.getElementById('v-cantidad').value = '1';
     document.getElementById('v-precio').value   = '';
     document.getElementById('venta-preview').style.display = 'none';
-  }
+  };
 
-  // ── RENDER ──
   function render() {
-    renderDashboard();
-    renderProductos();
-    renderSelect();
-    renderHistorial();
+    renderDashboard(); renderProductos(); renderSelect(); renderHistorial();
   }
 
   function unidadesVendidas(id) {
-    return state.ventas.filter(v => v.productoId === id).reduce((a, v) => a + v.cantidad, 0);
+    return ventas.filter(v => v.productoId === id).reduce((a, v) => a + v.cantidad, 0);
   }
 
   function renderDashboard() {
-    const invertido  = state.productos.reduce((a, p) => a + p.costo * (p.stock + unidadesVendidas(p.id)), 0);
-    const vendido    = state.ventas.reduce((a, v) => a + v.total, 0);
-    const ganancia   = state.ventas.reduce((a, v) => a + v.ganancia, 0);
-    const inventario = state.productos.reduce((a, p) => a + p.stock, 0);
+    const invertido  = productos.reduce((a, p) => a + p.costo * (p.stock + unidadesVendidas(p._id)), 0);
+    const vendido    = ventas.reduce((a, v) => a + v.total, 0);
+    const ganancia   = ventas.reduce((a, v) => a + v.ganancia, 0);
+    const inventario = productos.reduce((a, p) => a + p.stock, 0);
     const pct        = invertido > 0 ? Math.min(100, Math.round((ganancia / invertido) * 100)) : 0;
-
-    document.getElementById('stat-invertido').textContent = fmt(invertido);
-    document.getElementById('stat-vendido').textContent   = fmt(vendido);
-    document.getElementById('stat-count').textContent     = `${state.ventas.length} ventas`;
-    document.getElementById('stat-ganancia').textContent  = fmt(ganancia);
-    document.getElementById('stat-inventario').textContent= inventario;
-    document.getElementById('profit-bar').style.width     = pct + '%';
-    document.getElementById('profit-pct').textContent     = pct + '%';
-
+    document.getElementById('stat-invertido').textContent  = fmt(invertido);
+    document.getElementById('stat-vendido').textContent    = fmt(vendido);
+    document.getElementById('stat-count').textContent      = `${ventas.length} ventas`;
+    document.getElementById('stat-ganancia').textContent   = fmt(ganancia);
+    document.getElementById('stat-inventario').textContent = inventario;
+    document.getElementById('profit-bar').style.width      = pct + '%';
+    document.getElementById('profit-pct').textContent      = pct + '%';
     const ranking = {};
-    state.ventas.forEach(v => { ranking[v.nombre] = (ranking[v.nombre] || 0) + v.cantidad; });
+    ventas.forEach(v => { ranking[v.nombre] = (ranking[v.nombre] || 0) + v.cantidad; });
     const sorted = Object.entries(ranking).sort((a,b) => b[1]-a[1]).slice(0,5);
     const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
     const tp = document.getElementById('top-products');
@@ -587,25 +574,20 @@
 
   function renderProductos() {
     const tbody = document.getElementById('tabla-productos');
-    if (!state.productos.length) {
+    if (!productos.length) {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)"><span style="font-size:2rem">🍭</span><br>Agrega tu primer producto</td></tr>`;
       return;
     }
-    tbody.innerHTML = state.productos.map(p => {
+    tbody.innerHTML = productos.map(p => {
       const margen = p.costo > 0 ? Math.round(((p.venta - p.costo) / p.costo) * 100) : 0;
-      const estado = p.stock === 0
-        ? '<span class="badge badge-red">Agotado</span>'
-        : p.stock <= 3
-        ? '<span class="badge badge-yellow">Poco</span>'
+      const estado = p.stock === 0 ? '<span class="badge badge-red">Agotado</span>'
+        : p.stock <= 3 ? '<span class="badge badge-yellow">Poco</span>'
         : '<span class="badge badge-green">OK</span>';
       return `<tr>
-        <td><b>${p.nombre}</b></td>
-        <td>${fmt(p.costo)}</td>
-        <td>${fmt(p.venta)}</td>
-        <td style="color:var(--green)">+${margen}%</td>
-        <td><b>${p.stock}</b></td>
+        <td><b>${p.nombre}</b></td><td>${fmt(p.costo)}</td><td>${fmt(p.venta)}</td>
+        <td style="color:var(--green)">+${margen}%</td><td><b>${p.stock}</b></td>
         <td>${estado}</td>
-        <td><button class="btn btn-danger" onclick="eliminarProducto(${p.id})">✕</button></td>
+        <td><button class="btn btn-danger" onclick="eliminarProducto('${p._id}')">✕</button></td>
       </tr>`;
     }).join('');
   }
@@ -614,27 +596,34 @@
     const sel = document.getElementById('v-producto');
     const val = sel.value;
     sel.innerHTML = '<option value="">— Selecciona un producto —</option>' +
-      state.productos.filter(p => p.stock > 0).map(p =>
-        `<option value="${p.id}">${p.nombre} (stock: ${p.stock})</option>`).join('');
+      productos.filter(p => p.stock > 0).map(p =>
+        `<option value="${p._id}">${p.nombre} (stock: ${p.stock})</option>`).join('');
     if (val) sel.value = val;
   }
 
   function renderHistorial() {
     const tbody = document.getElementById('tabla-historial');
-    if (!state.ventas.length) {
+    if (!ventas.length) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)"><span style="font-size:2rem">📋</span><br>Aún no hay ventas</td></tr>`;
       return;
     }
-    tbody.innerHTML = [...state.ventas].reverse().map(v => `<tr>
+    tbody.innerHTML = [...ventas].reverse().map(v => `<tr>
       <td style="color:var(--muted);font-size:.85rem">${v.fecha}</td>
-      <td><b>${v.nombre}</b></td>
-      <td style="text-align:center">${v.cantidad}</td>
+      <td><b>${v.nombre}</b></td><td style="text-align:center">${v.cantidad}</td>
       <td style="color:var(--blue);font-weight:800">${fmt(v.total)}</td>
       <td style="color:var(--green);font-weight:800">+${fmt(v.ganancia)}</td>
     </tr>`).join('');
   }
 
-  render();
+  onSnapshot(query(collection(db, 'productos'), orderBy('creadoEn')), snap => {
+    productos = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    render();
+  });
+
+  onSnapshot(query(collection(db, 'ventas'), orderBy('creadoEn')), snap => {
+    ventas = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    render();
+  });
 </script>
 </body>
 </html>
