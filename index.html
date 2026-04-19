@@ -291,6 +291,7 @@
   <button class="nav-btn" data-section="productos">🍭 Productos</button>
   <button class="nav-btn" data-section="ventas">💸 Ventas</button>
   <button class="nav-btn" data-section="historial">📋 Historial</button>
+  <button class="nav-btn" data-section="reabastecer">🛍️ Reabastecer</button>
 </nav>
 
 <main>
@@ -408,15 +409,40 @@
   <!-- HISTORIAL -->
   <section id="historial" class="section">
     <div class="section-title">📋 Historial de Ventas</div>
+    <div id="historial-semanas"></div>
+  </section>
+
+
+  <!-- REABASTECER -->
+  <section id="reabastecer" class="section">
+    <div class="section-title">🛍️ Lista de Compras</div>
+    <div class="card" style="border:1px solid rgba(251,191,36,0.2);background:rgba(251,191,36,0.05)">
+      <div class="card-title" style="color:var(--yellow)">⚠️ Productos que necesitan reposición</div>
+      <div id="lista-reabastecer" style="margin-top:8px"></div>
+    </div>
     <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Total</th><th>Ganancia</th></tr>
-          </thead>
-          <tbody id="tabla-historial"></tbody>
-        </table>
+      <div class="card-title">➕ Agregar Stock</div>
+      <div class="form-grid" style="margin-top:4px">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>🍭 Producto</label>
+          <select id="r-producto">
+            <option value="">— Selecciona un producto —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>📦 Unidades que compraste</label>
+          <input type="number" id="r-cantidad" placeholder="20" min="1" />
+        </div>
+        <div class="form-group">
+          <label>💵 Costo total pagado</label>
+          <input type="number" id="r-costo-total" placeholder="10000" min="0" />
+        </div>
       </div>
+      <div class="preview-box" id="r-preview">
+        <div style="font-weight:800;color:var(--yellow);margin-bottom:8px">Vista previa</div>
+        <div id="r-preview-text" style="font-size:.95rem;color:var(--muted)"></div>
+      </div>
+      <button class="btn btn-primary" onclick="reabastecer()">✅ Registrar Compra</button>
     </div>
   </section>
 
@@ -426,7 +452,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, doc, onSnapshot, addDoc, deleteDoc, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, onSnapshot, addDoc, deleteDoc, query, orderBy, writeBatch, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const app = initializeApp({
     apiKey: "AIzaSyCEyqC7f1AJ7eywEcpssE1jwhpFVmfEJaE",
@@ -536,7 +562,7 @@
   };
 
   function render() {
-    renderDashboard(); renderProductos(); renderSelect(); renderHistorial();
+    renderDashboard(); renderProductos(); renderSelect(); renderHistorial(); renderReabastecer();
   }
 
   function unidadesVendidas(id) {
@@ -601,19 +627,127 @@
     if (val) sel.value = val;
   }
 
+  function getWeekKey(ts) {
+    const d = new Date(ts);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const mon = new Date(d.setDate(diff));
+    mon.setHours(0,0,0,0);
+    return mon.getTime();
+  }
+
   function renderHistorial() {
-    const tbody = document.getElementById('tabla-historial');
+    const container = document.getElementById('historial-semanas');
     if (!ventas.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)"><span style="font-size:2rem">📋</span><br>Aún no hay ventas</td></tr>`;
+      container.innerHTML = `<div class="card"><div class="empty-state"><span class="emoji">📋</span><p>Aún no hay ventas</p></div></div>`;
       return;
     }
-    tbody.innerHTML = [...ventas].reverse().map(v => `<tr>
-      <td style="color:var(--muted);font-size:.85rem">${v.fecha}</td>
-      <td><b>${v.nombre}</b></td><td style="text-align:center">${v.cantidad}</td>
-      <td style="color:var(--blue);font-weight:800">${fmt(v.total)}</td>
-      <td style="color:var(--green);font-weight:800">+${fmt(v.ganancia)}</td>
-    </tr>`).join('');
+    const semanas = {};
+    [...ventas].forEach(v => {
+      const key = getWeekKey(v.creadoEn);
+      if (!semanas[key]) semanas[key] = [];
+      semanas[key].push(v);
+    });
+    const keys = Object.keys(semanas).map(Number).sort((a,b) => b - a);
+    container.innerHTML = keys.map((key, idx) => {
+      const svs    = semanas[key].sort((a,b) => b.creadoEn - a.creadoEn);
+      const lunes  = new Date(key);
+      const viernes = new Date(key + 4 * 86400000);
+      const label  = `Semana del ${lunes.getDate()} al ${viernes.getDate()} de ${viernes.toLocaleString('es-CO',{month:'long'})}`;
+      const total  = svs.reduce((a,v) => a + v.total, 0);
+      const ganancia = svs.reduce((a,v) => a + v.ganancia, 0);
+      const isOpen = idx === 0;
+      return `<div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleSemana('s${key}')">
+          <div>
+            <div style="font-weight:800;font-size:1rem">📅 ${label}</div>
+            <div style="font-size:.85rem;color:var(--muted);margin-top:4px">${svs.length} ventas</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:var(--blue);font-weight:900">${fmt(total)}</div>
+            <div style="color:var(--green);font-size:.85rem;font-weight:700">+${fmt(ganancia)}</div>
+          </div>
+        </div>
+        <div id="s${key}" style="display:${isOpen?'block':'none'};margin-top:16px">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Ganancia</th></tr></thead>
+              <tbody>${svs.map(v => `<tr>
+                <td style="color:var(--muted);font-size:.82rem">${v.fecha}</td>
+                <td><b>${v.nombre}</b></td>
+                <td style="text-align:center">${v.cantidad}</td>
+                <td style="color:var(--blue);font-weight:800">${fmt(v.total)}</td>
+                <td style="color:var(--green);font-weight:800">+${fmt(v.ganancia)}</td>
+              </tr>`).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   }
+
+  window.toggleSemana = (id) => {
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  };
+
+  function renderReabastecer() {
+    const bajos = productos.filter(p => p.stock <= 5).sort((a,b) => a.stock - b.stock);
+    const lista = document.getElementById('lista-reabastecer');
+    if (!lista) return;
+    if (!bajos.length) {
+      lista.innerHTML = `<div style="color:var(--green);font-weight:700;padding:12px 0">✅ Todo el inventario está bien</div>`;
+    } else {
+      lista.innerHTML = bajos.map(p => {
+        const color = p.stock === 0 ? 'var(--red)' : 'var(--yellow)';
+        const icon  = p.stock === 0 ? '🚨' : '⚠️';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <span style="font-weight:700">${icon} ${p.nombre}</span>
+          <span style="color:${color};font-weight:800">${p.stock} uds</span>
+        </div>`;
+      }).join('');
+    }
+
+    const sel = document.getElementById('r-producto');
+    if (!sel) return;
+    const val = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona un producto —</option>' +
+      productos.map(p => `<option value="${p._id}">${p.nombre} (stock: ${p.stock})</option>`).join('');
+    if (val) sel.value = val;
+  }
+
+  document.addEventListener('change', e => { if (e.target.id === 'r-producto') updateRPreview(); });
+  document.addEventListener('input', e => { if (e.target.id === 'r-cantidad' || e.target.id === 'r-costo-total') updateRPreview(); });
+
+  function updateRPreview() {
+    const pid      = document.getElementById('r-producto')?.value;
+    const cantidad = parseInt(document.getElementById('r-cantidad')?.value) || 0;
+    const costoT   = parseFloat(document.getElementById('r-costo-total')?.value) || 0;
+    const producto = productos.find(p => p._id === pid);
+    const box      = document.getElementById('r-preview');
+    if (!producto || cantidad <= 0) { if(box) box.style.display = 'none'; return; }
+    const costUnit = costoT > 0 ? costoT / cantidad : producto.costo;
+    if(box) box.style.display = 'block';
+    document.getElementById('r-preview-text').innerHTML =
+      `Agregar <b>${cantidad}</b> uds de <b>${producto.nombre}</b>. ` +
+      `Nuevo stock: <b style="color:var(--blue)">${producto.stock + cantidad}</b>. ` +
+      (costoT > 0 ? `Costo unitario real: <b style="color:var(--yellow)">${fmt(costoT/cantidad)}</b>` : '');
+  }
+
+  window.reabastecer = async () => {
+    const pid      = document.getElementById('r-producto').value;
+    const cantidad = parseInt(document.getElementById('r-cantidad').value);
+    const costoT   = parseFloat(document.getElementById('r-costo-total').value) || 0;
+    const producto = productos.find(p => p._id === pid);
+    if (!producto)                        return toast('⚠️ Selecciona un producto');
+    if (isNaN(cantidad) || cantidad <= 0) return toast('⚠️ Cantidad inválida');
+    await updateDoc(doc(db, 'productos', pid), { stock: increment(cantidad) });
+    toast(`📦 +${cantidad} uds de ${producto.nombre} agregadas`);
+    document.getElementById('r-producto').value    = '';
+    document.getElementById('r-cantidad').value    = '';
+    document.getElementById('r-costo-total').value = '';
+    document.getElementById('r-preview').style.display = 'none';
+  };
 
   onSnapshot(query(collection(db, 'productos'), orderBy('creadoEn')), snap => {
     productos = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
