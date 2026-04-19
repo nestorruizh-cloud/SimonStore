@@ -342,23 +342,50 @@
     <div class="card">
       <div class="card-title">➕ Agregar Producto</div>
       <div class="form-grid">
-        <div class="form-group">
-          <label>Nombre</label>
-          <input type="text" id="p-nombre" placeholder="Ej: Gomitas" />
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Nombre del dulce</label>
+          <input type="text" id="p-nombre" placeholder="Ej: Gomitas, Chocolatinas..." />
         </div>
         <div class="form-group">
-          <label>💵 Precio Costo</label>
-          <input type="number" id="p-costo" placeholder="500" min="0" />
+          <label>🛍️ Costo del paquete</label>
+          <input type="number" id="p-costo-bolsa" placeholder="Ej: 5000" min="0" oninput="calcPrecio()" />
         </div>
         <div class="form-group">
-          <label>🏷️ Precio Venta</label>
-          <input type="number" id="p-venta" placeholder="1000" min="0" />
+          <label>🔢 Unidades en el paquete</label>
+          <input type="number" id="p-unidades" placeholder="Ej: 50" min="1" oninput="calcPrecio()" />
         </div>
         <div class="form-group">
-          <label>📦 Stock Inicial</label>
-          <input type="number" id="p-stock" placeholder="20" min="0" />
+          <label>📦 Stock inicial (# paquetes)</label>
+          <input type="number" id="p-stock" placeholder="Ej: 2" min="1" value="1" oninput="calcPrecio()" />
+        </div>
+        <div class="form-group">
+          <label>📈 Ganancia deseada %</label>
+          <input type="number" id="p-margen" placeholder="Ej: 50" min="0" max="500" oninput="calcPrecio()" />
         </div>
       </div>
+
+      <div id="p-preview" style="display:none;margin:16px 0;padding:16px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:14px;">
+        <div style="font-weight:800;color:var(--purple);margin-bottom:12px">🧮 Cálculo automático</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Costo por unidad</div>
+            <div id="p-calc-costo" style="font-size:1.3rem;font-weight:900;color:var(--pink);margin-top:4px">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Precio de venta</div>
+            <div id="p-calc-venta" style="font-size:1.3rem;font-weight:900;color:var(--green);margin-top:4px">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total unidades</div>
+            <div id="p-calc-stock" style="font-size:1.3rem;font-weight:900;color:var(--blue);margin-top:4px">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Ganancia total si vende todo</div>
+            <div id="p-calc-ganancia" style="font-size:1.3rem;font-weight:900;color:var(--yellow);margin-top:4px">—</div>
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-primary" onclick="agregarProducto()">➕ Agregar Producto</button>
     </div>
 
@@ -495,19 +522,44 @@
     toast('🗑️ Datos borrados');
   };
 
+  window.calcPrecio = () => {
+    const costoBolsa = parseFloat(document.getElementById('p-costo-bolsa').value);
+    const unidades   = parseInt(document.getElementById('p-unidades').value);
+    const paquetes   = parseInt(document.getElementById('p-stock').value) || 1;
+    const margen     = parseFloat(document.getElementById('p-margen').value);
+    const preview    = document.getElementById('p-preview');
+    if (!costoBolsa || !unidades || unidades < 1) { preview.style.display = 'none'; return; }
+    const costoUnit  = costoBolsa / unidades;
+    const precioVenta = !isNaN(margen) && margen >= 0
+      ? Math.ceil(costoUnit * (1 + margen / 100))
+      : null;
+    const totalUnits = unidades * paquetes;
+    preview.style.display = 'block';
+    document.getElementById('p-calc-costo').textContent   = fmt(costoUnit);
+    document.getElementById('p-calc-venta').textContent   = precioVenta ? fmt(precioVenta) : '—';
+    document.getElementById('p-calc-stock').textContent   = totalUnits + ' uds';
+    document.getElementById('p-calc-ganancia').textContent = precioVenta
+      ? fmt((precioVenta - costoUnit) * totalUnits) : '—';
+  };
+
   window.agregarProducto = async () => {
-    const nombre = document.getElementById('p-nombre').value.trim();
-    const costo  = parseFloat(document.getElementById('p-costo').value);
-    const venta  = parseFloat(document.getElementById('p-venta').value);
-    const stock  = parseInt(document.getElementById('p-stock').value);
-    if (!nombre)                   return toast('⚠️ Escribe el nombre');
-    if (isNaN(costo) || costo < 0) return toast('⚠️ Precio de costo inválido');
-    if (isNaN(venta) || venta < 0) return toast('⚠️ Precio de venta inválido');
-    if (isNaN(stock) || stock < 0) return toast('⚠️ Stock inválido');
-    if (venta < costo)             return toast('⚠️ El precio de venta debe ser ≥ al costo');
-    await addDoc(collection(db, 'productos'), { nombre, costo, venta, stock, creadoEn: Date.now() });
-    toast(`🎉 "${nombre}" agregado`);
-    ['p-nombre','p-costo','p-venta','p-stock'].forEach(id => document.getElementById(id).value = '');
+    const nombre     = document.getElementById('p-nombre').value.trim();
+    const costoBolsa = parseFloat(document.getElementById('p-costo-bolsa').value);
+    const unidades   = parseInt(document.getElementById('p-unidades').value);
+    const paquetes   = parseInt(document.getElementById('p-stock').value) || 1;
+    const margen     = parseFloat(document.getElementById('p-margen').value);
+    if (!nombre)                          return toast('⚠️ Escribe el nombre');
+    if (isNaN(costoBolsa) || costoBolsa <= 0) return toast('⚠️ Ingresa el costo del paquete');
+    if (isNaN(unidades)   || unidades < 1)    return toast('⚠️ Ingresa las unidades del paquete');
+    if (isNaN(margen)     || margen < 0)      return toast('⚠️ Ingresa el % de ganancia');
+    const costo = costoBolsa / unidades;
+    const venta = Math.ceil(costo * (1 + margen / 100));
+    const stock = unidades * paquetes;
+    await addDoc(collection(db, 'productos'), { nombre, costo, venta, stock, margen, creadoEn: Date.now() });
+    toast(`🎉 "${nombre}" agregado — vender a ${fmt(venta)} c/u`);
+    ['p-nombre','p-costo-bolsa','p-unidades','p-stock','p-margen'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('p-stock').value = '1';
+    document.getElementById('p-preview').style.display = 'none';
   };
 
   window.eliminarProducto = async (id) => {
