@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🍬 SimonStore</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+    :root {
+      --pink: #ff6eb4;
+      --purple: #a855f7;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --yellow: #fbbf24;
+      --red: #ef4444;
+      --bg: #0f0f1a;
+      --card: #1a1a2e;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      border-bottom: 2px solid rgba(168,85,247,0.4);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, var(--pink), var(--purple), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .reset-btn {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.4);
+      color: var(--red);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      transition: all .2s;
+    }
+    .reset-btn:hover { background: rgba(239,68,68,0.3); }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      padding: 16px 24px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+
+    .nav-btn {
+      background: var(--card);
+      border: 2px solid transparent;
+      color: var(--muted);
+      padding: 10px 20px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .nav-btn:hover { border-color: var(--purple); color: var(--text); }
+    .nav-btn.active {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      border-color: transparent;
+      color: white;
+      box-shadow: 0 4px 20px rgba(168,85,247,0.4);
+    }
+
+    main { padding: 0 24px 40px; max-width: 900px; margin: 0 auto; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 14px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .stat-card.pink::before   { background: linear-gradient(90deg, var(--pink), var(--purple)); }
+    .stat-card.blue::before   { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+    .stat-card.green::before  { background: linear-gradient(90deg, var(--green), var(--blue)); }
+    .stat-card.yellow::before { background: linear-gradient(90deg, var(--yellow), var(--green)); }
+
+    .stat-label { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .stat-value { font-size: 1.8rem; font-weight: 900; margin-top: 6px; }
+    .stat-card.pink   .stat-value { color: var(--pink); }
+    .stat-card.blue   .stat-value { color: var(--blue); }
+    .stat-card.green  .stat-value { color: var(--green); }
+    .stat-card.yellow .stat-value { color: var(--yellow); }
+    .stat-sub { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, var(--purple), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.82rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+    input, select {
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: border-color .2s;
+      width: 100%;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--purple); }
+    select option { background: #1a1a2e; }
+
+    .btn {
+      padding: 13px 28px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white;
+      box-shadow: 0 4px 20px rgba(168,85,247,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(168,85,247,0.5); }
+    .btn-success {
+      background: linear-gradient(135deg, var(--green), var(--blue));
+      color: white;
+      box-shadow: 0 4px 20px rgba(34,197,94,0.3);
+    }
+    .btn-success:hover { transform: translateY(-2px); }
+    .btn-danger {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--red);
+      padding: 8px 14px;
+      font-size: 0.85rem;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.3); }
+
+    .table-wrap { overflow-x: auto; border-radius: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: rgba(168,85,247,0.15);
+      color: var(--purple);
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 12px 16px;
+      text-align: left;
+    }
+    td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-weight: 600; font-size: 0.95rem; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 800; }
+    .badge-green  { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .badge-red    { background: rgba(239,68,68,0.15);   color: var(--red); }
+    .badge-yellow { background: rgba(251,191,36,0.15);  color: var(--yellow); }
+
+    .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+    .empty-state .emoji { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+    .profit-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+    .progress-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green), var(--blue)); transition: width .5s ease; }
+
+    .preview-box {
+      display: none;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 14px;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white;
+      padding: 14px 22px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      box-shadow: 0 8px 30px rgba(168,85,247,0.5);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all .3s;
+      z-index: 999;
+      max-width: 300px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 500px) {
+      header { padding: 12px 16px; }
+      nav, main { padding-left: 16px; padding-right: 16px; }
+      .logo { font-size: 1.3rem; }
+      .stat-value { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🍬 SimonStore</div>
+  <button class="reset-btn" onclick="resetAll()">🗑️ Borrar todo</button>
+</header>
+
+<nav>
+  <button class="nav-btn active" data-section="dashboard">📊 Dashboard</button>
+  <button class="nav-btn" data-section="productos">🍭 Productos</button>
+  <button class="nav-btn" data-section="ventas">💸 Ventas</button>
+  <button class="nav-btn" data-section="historial">📋 Historial</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="section active">
+    <div class="stats-grid">
+      <div class="stat-card pink">
+        <div class="stat-label">💰 Invertido</div>
+        <div class="stat-value" id="stat-invertido">$0</div>
+        <div class="stat-sub">Costo total de productos</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">🛒 Vendido</div>
+        <div class="stat-value" id="stat-vendido">$0</div>
+        <div class="stat-sub" id="stat-count">0 ventas</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">✨ Ganancia</div>
+        <div class="stat-value" id="stat-ganancia">$0</div>
+        <div class="profit-row">
+          <div class="progress-bar"><div class="progress-fill" id="profit-bar" style="width:0%"></div></div>
+          <span id="profit-pct" style="font-size:.8rem;color:var(--muted);font-weight:700">0%</span>
+        </div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-label">📦 Inventario</div>
+        <div class="stat-value" id="stat-inventario">0</div>
+        <div class="stat-sub">Unidades disponibles</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏆 Top Productos</div>
+      <div id="top-products">
+        <div class="empty-state">
+          <span class="emoji">📊</span>
+          <p>Registra ventas para ver el ranking</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUCTOS -->
+  <section id="productos" class="section">
+    <div class="section-title">🍭 Mis Productos</div>
+
+    <div class="card">
+      <div class="card-title">➕ Agregar Producto</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" id="p-nombre" placeholder="Ej: Gomitas" />
+        </div>
+        <div class="form-group">
+          <label>💵 Precio Costo</label>
+          <input type="number" id="p-costo" placeholder="500" min="0" />
+        </div>
+        <div class="form-group">
+          <label>🏷️ Precio Venta</label>
+          <input type="number" id="p-venta" placeholder="1000" min="0" />
+        </div>
+        <div class="form-group">
+          <label>📦 Stock Inicial</label>
+          <input type="number" id="p-stock" placeholder="20" min="0" />
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="agregarProducto()">➕ Agregar Producto</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📦 Inventario Actual</div>
+      <div class="table-wrap" style="margin-top:8px">
+        <table>
+          <thead>
+            <tr><th>Producto</th><th>Costo</th><th>Precio</th><th>Margen</th><th>Stock</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody id="tabla-productos"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- VENTAS -->
+  <section id="ventas" class="section">
+    <div class="section-title">💸 Registrar Venta</div>
+
+    <div class="card">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>🍭 Producto</label>
+          <select id="v-producto">
+            <option value="">— Selecciona un producto —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>🔢 Cantidad</label>
+          <input type="number" id="v-cantidad" placeholder="1" min="1" value="1" />
+        </div>
+        <div class="form-group">
+          <label>💵 Precio Unitario <span style="font-weight:400;font-size:.85em">(opcional)</span></label>
+          <input type="number" id="v-precio" placeholder="Usa precio del producto" min="0" />
+        </div>
+      </div>
+
+      <div class="preview-box" id="venta-preview">
+        <div style="font-weight:800;color:var(--green);margin-bottom:8px">Vista previa</div>
+        <div id="venta-preview-text" style="font-size:.95rem;color:var(--muted)"></div>
+      </div>
+
+      <button class="btn btn-success" onclick="registrarVenta()">✅ Registrar Venta</button>
+    </div>
+  </section>
+
+  <!-- HISTORIAL -->
+  <section id="historial" class="section">
+    <div class="section-title">📋 Historial de Ventas</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Total</th><th>Ganancia</th></tr>
+          </thead>
+          <tbody id="tabla-historial"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  let state = JSON.parse(localStorage.getItem('simonstore') || 'null') || { productos: [], ventas: [] };
+
+  function save() { localStorage.setItem('simonstore', JSON.stringify(state)); }
+
+  // Navigation
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.section).classList.add('active');
+      render();
+    });
+  });
+
+  // Toast
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // Reset
+  function resetAll() {
+    if (!confirm('¿Seguro? Se borrarán todos los productos y ventas.')) return;
+    state = { productos: [], ventas: [] };
+    save(); render();
+    toast('🗑️ Datos borrados');
+  }
+
+  // Formato moneda
+  function fmt(n) { return '$' + Number(n).toLocaleString('es-CO'); }
+
+  // ── PRODUCTOS ──
+  function agregarProducto() {
+    const nombre = document.getElementById('p-nombre').value.trim();
+    const costo  = parseFloat(document.getElementById('p-costo').value);
+    const venta  = parseFloat(document.getElementById('p-venta').value);
+    const stock  = parseInt(document.getElementById('p-stock').value);
+
+    if (!nombre)                        return toast('⚠️ Escribe el nombre');
+    if (isNaN(costo) || costo < 0)      return toast('⚠️ Precio de costo inválido');
+    if (isNaN(venta) || venta < 0)      return toast('⚠️ Precio de venta inválido');
+    if (isNaN(stock) || stock < 0)      return toast('⚠️ Stock inválido');
+    if (venta < costo)                  return toast('⚠️ El precio de venta debe ser ≥ al costo');
+
+    state.productos.push({ id: Date.now(), nombre, costo, venta, stock });
+    save(); render();
+    toast(`🎉 "${nombre}" agregado`);
+    ['p-nombre','p-costo','p-venta','p-stock'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  function eliminarProducto(id) {
+    if (!confirm('¿Eliminar este producto?')) return;
+    state.productos = state.productos.filter(p => p.id !== id);
+    save(); render();
+    toast('🗑️ Producto eliminado');
+  }
+
+  // ── VENTAS ──
+  document.getElementById('v-producto').addEventListener('change', actualizarPreview);
+  document.getElementById('v-cantidad').addEventListener('input', actualizarPreview);
+  document.getElementById('v-precio').addEventListener('input', actualizarPreview);
+
+  function actualizarPreview() {
+    const pid      = parseInt(document.getElementById('v-producto').value);
+    const cantidad = parseInt(document.getElementById('v-cantidad').value) || 0;
+    const producto = state.productos.find(p => p.id === pid);
+    const box      = document.getElementById('venta-preview');
+
+    if (!producto || cantidad <= 0) { box.style.display = 'none'; return; }
+
+    const custom = parseFloat(document.getElementById('v-precio').value);
+    const precio = (!isNaN(custom) && custom > 0) ? custom : producto.venta;
+    const total    = precio * cantidad;
+    const ganancia = (precio - producto.costo) * cantidad;
+
+    box.style.display = 'block';
+    document.getElementById('venta-preview-text').innerHTML =
+      `<b>${cantidad}</b> × ${producto.nombre} @ <b>${fmt(precio)}</b> =
+       <b style="color:var(--green)">${fmt(total)}</b> &nbsp;|&nbsp;
+       Ganancia: <b style="color:var(--yellow)">${fmt(ganancia)}</b>`;
+  }
+
+  function registrarVenta() {
+    const pid      = parseInt(document.getElementById('v-producto').value);
+    const cantidad = parseInt(document.getElementById('v-cantidad').value);
+    const producto = state.productos.find(p => p.id === pid);
+
+    if (!producto)                        return toast('⚠️ Selecciona un producto');
+    if (isNaN(cantidad) || cantidad <= 0) return toast('⚠️ Cantidad inválida');
+    if (cantidad > producto.stock)        return toast(`⚠️ Solo hay ${producto.stock} unidades`);
+
+    const custom = parseFloat(document.getElementById('v-precio').value);
+    const precio = (!isNaN(custom) && custom > 0) ? custom : producto.venta;
+
+    producto.stock -= cantidad;
+    state.ventas.push({
+      id: Date.now(),
+      fecha: new Date().toLocaleString('es-CO', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' }),
+      productoId: producto.id,
+      nombre: producto.nombre,
+      cantidad,
+      precio,
+      total: precio * cantidad,
+      ganancia: (precio - producto.costo) * cantidad
+    });
+
+    save(); render();
+    toast(`🎉 Venta registrada!`);
+    document.getElementById('v-producto').value = '';
+    document.getElementById('v-cantidad').value = '1';
+    document.getElementById('v-precio').value   = '';
+    document.getElementById('venta-preview').style.display = 'none';
+  }
+
+  // ── RENDER ──
+  function render() {
+    renderDashboard();
+    renderProductos();
+    renderSelect();
+    renderHistorial();
+  }
+
+  function unidadesVendidas(id) {
+    return state.ventas.filter(v => v.productoId === id).reduce((a, v) => a + v.cantidad, 0);
+  }
+
+  function renderDashboard() {
+    const invertido  = state.productos.reduce((a, p) => a + p.costo * (p.stock + unidadesVendidas(p.id)), 0);
+    const vendido    = state.ventas.reduce((a, v) => a + v.total, 0);
+    const ganancia   = state.ventas.reduce((a, v) => a + v.ganancia, 0);
+    const inventario = state.productos.reduce((a, p) => a + p.stock, 0);
+    const pct        = invertido > 0 ? Math.min(100, Math.round((ganancia / invertido) * 100)) : 0;
+
+    document.getElementById('stat-invertido').textContent = fmt(invertido);
+    document.getElementById('stat-vendido').textContent   = fmt(vendido);
+    document.getElementById('stat-count').textContent     = `${state.ventas.length} ventas`;
+    document.getElementById('stat-ganancia').textContent  = fmt(ganancia);
+    document.getElementById('stat-inventario').textContent= inventario;
+    document.getElementById('profit-bar').style.width     = pct + '%';
+    document.getElementById('profit-pct').textContent     = pct + '%';
+
+    const ranking = {};
+    state.ventas.forEach(v => { ranking[v.nombre] = (ranking[v.nombre] || 0) + v.cantidad; });
+    const sorted = Object.entries(ranking).sort((a,b) => b[1]-a[1]).slice(0,5);
+    const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const tp = document.getElementById('top-products');
+    if (!sorted.length) {
+      tp.innerHTML = '<div class="empty-state"><span class="emoji">📊</span><p>Registra ventas para ver el ranking</p></div>';
+    } else {
+      tp.innerHTML = sorted.map(([nombre, qty], i) =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <span style="font-weight:700">${medals[i]} ${nombre}</span>
+          <span class="badge badge-green">${qty} uds</span>
+        </div>`).join('');
+    }
+  }
+
+  function renderProductos() {
+    const tbody = document.getElementById('tabla-productos');
+    if (!state.productos.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)"><span style="font-size:2rem">🍭</span><br>Agrega tu primer producto</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = state.productos.map(p => {
+      const margen = p.costo > 0 ? Math.round(((p.venta - p.costo) / p.costo) * 100) : 0;
+      const estado = p.stock === 0
+        ? '<span class="badge badge-red">Agotado</span>'
+        : p.stock <= 3
+        ? '<span class="badge badge-yellow">Poco</span>'
+        : '<span class="badge badge-green">OK</span>';
+      return `<tr>
+        <td><b>${p.nombre}</b></td>
+        <td>${fmt(p.costo)}</td>
+        <td>${fmt(p.venta)}</td>
+        <td style="color:var(--green)">+${margen}%</td>
+        <td><b>${p.stock}</b></td>
+        <td>${estado}</td>
+        <td><button class="btn btn-danger" onclick="eliminarProducto(${p.id})">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderSelect() {
+    const sel = document.getElementById('v-producto');
+    const val = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona un producto —</option>' +
+      state.productos.filter(p => p.stock > 0).map(p =>
+        `<option value="${p.id}">${p.nombre} (stock: ${p.stock})</option>`).join('');
+    if (val) sel.value = val;
+  }
+
+  function renderHistorial() {
+    const tbody = document.getElementById('tabla-historial');
+    if (!state.ventas.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)"><span style="font-size:2rem">📋</span><br>Aún no hay ventas</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = [...state.ventas].reverse().map(v => `<tr>
+      <td style="color:var(--muted);font-size:.85rem">${v.fecha}</td>
+      <td><b>${v.nombre}</b></td>
+      <td style="text-align:center">${v.cantidad}</td>
+      <td style="color:var(--blue);font-weight:800">${fmt(v.total)}</td>
+      <td style="color:var(--green);font-weight:800">+${fmt(v.ganancia)}</td>
+    </tr>`).join('');
+  }
+
+  render();
+</script>
+</body>
+</html>
