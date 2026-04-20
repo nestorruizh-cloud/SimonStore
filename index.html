@@ -306,7 +306,7 @@
   <section id="p-dashboard" class="section active">
     <div class="stats-grid">
       <div class="stat-card purple"><div class="stat-label">📝 Encargos</div><div class="stat-value" id="p-total">0</div><div class="stat-sub">Total recibidos</div></div>
-      <div class="stat-card yellow"><div class="stat-label">⏳ Pendientes</div><div class="stat-value" id="p-pendientes">0</div><div class="stat-sub">Por comprar</div></div>
+      <div class="stat-card yellow"><div class="stat-label">⏳ Pendientes</div><div class="stat-value" id="p-stat-pendientes">0</div><div class="stat-sub">Por comprar</div></div>
       <div class="stat-card green"><div class="stat-label">✅ Vendidos</div><div class="stat-value" id="p-vendidos-count">0</div><div class="stat-sub" id="p-ganancia-label">Ganancia: $0</div></div>
       <div class="stat-card blue"><div class="stat-label">💵 Recaudado</div><div class="stat-value" id="p-recaudado">$0</div><div class="stat-sub">Total cobrado</div></div>
     </div>
@@ -782,7 +782,7 @@
     const recaudado=vend.reduce((a,e)=>a+e.venta,0);
     const ganTotal=vend.reduce((a,e)=>a+e.ganancia,0);
     document.getElementById('p-total').textContent=total;
-    document.getElementById('p-pendientes').textContent=pend;
+    document.getElementById('p-stat-pendientes').textContent=pend;
     document.getElementById('p-vendidos-count').textContent=vend.length;
     document.getElementById('p-ganancia-label').textContent='Ganancia: '+fmt(ganTotal);
     document.getElementById('p-recaudado').textContent=fmt(recaudado);
@@ -828,9 +828,7 @@
   function renderPendientes(){
     const lista=document.getElementById('p-lista-pendientes');
     if(!lista) return;
-    console.log('renderPendientes - encargos:', encargos.length, encargos.map(e=>({id:e._id,estado:e.estado})));
     const pend=encargos.filter(e=>e.estado==='pendiente');
-    console.log('pendientes encontrados:', pend.length);
     if(!pend.length){lista.innerHTML='<div style="color:var(--green);font-weight:700;padding:10px 0">✅ No tienes encargos pendientes</div>';return;}
     const totalInv=pend.reduce((a,e)=>a+e.costo,0);
     lista.innerHTML=pend.map(e=>`
