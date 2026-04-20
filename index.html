@@ -533,13 +533,17 @@
       venta=parseFloat(document.getElementById('dp-precio-calc').value);
       if(!isNaN(venta)&&venta>0){
         mg=Math.round((venta/cu-1)*100);
-        document.getElementById('dp-margen').value=mg;
+        document.getElementById('dp-margen').value=mg>=0?mg:'';
+      } else {
+        document.getElementById('dp-margen').value='';
       }
     } else {
       mg=parseFloat(document.getElementById('dp-margen').value);
       if(!isNaN(mg)&&mg>=0){
         venta=Math.ceil(cu*(1+mg/100));
         document.getElementById('dp-precio-calc').value=venta;
+      } else {
+        document.getElementById('dp-precio-calc').value='';
       }
     }
     pv.style.display='block';
