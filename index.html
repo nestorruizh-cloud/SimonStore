@@ -828,7 +828,9 @@
   function renderPendientes(){
     const lista=document.getElementById('p-lista-pendientes');
     if(!lista) return;
+    console.log('renderPendientes - encargos:', encargos.length, encargos.map(e=>({id:e._id,estado:e.estado})));
     const pend=encargos.filter(e=>e.estado==='pendiente');
+    console.log('pendientes encontrados:', pend.length);
     if(!pend.length){lista.innerHTML='<div style="color:var(--green);font-weight:700;padding:10px 0">✅ No tienes encargos pendientes</div>';return;}
     const totalInv=pend.reduce((a,e)=>a+e.costo,0);
     lista.innerHTML=pend.map(e=>`
