@@ -501,6 +501,7 @@
       btn.classList.add('active');
       document.getElementById(btn.dataset.section).classList.add('active');
       renderAll();
+      if(btn.dataset.section==='p-pendientes') renderPendientes();
     });
   });
 
@@ -687,10 +688,10 @@
   // ════════════ RENDER ════════════
 
   function renderAll(){
-    renderDulcesDashboard(); renderDulcesProductos(); renderDulcesSelects();
-    renderDulcesHistorial(); renderDulcesReabastecer();
-    renderPerfumesDashboard(); renderEncargos(); renderPendientes(); renderVendidos();
-    renderCaja();
+    const fns=[renderDulcesDashboard,renderDulcesProductos,renderDulcesSelects,
+      renderDulcesHistorial,renderDulcesReabastecer,
+      renderPerfumesDashboard,renderEncargos,renderPendientes,renderVendidos,renderCaja];
+    fns.forEach(fn=>{ try{ fn(); }catch(e){ console.warn(fn.name, e); } });
   }
 
   function unidsVendidas(id){return ventasDulces.filter(v=>v.productoId===id).reduce((a,v)=>a+v.cantidad,0);}
