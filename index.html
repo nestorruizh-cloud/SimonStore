@@ -234,7 +234,8 @@
         <div class="form-group"><label>🛍️ Costo del paquete</label><input type="number" id="dp-costo-bolsa" placeholder="5000" min="0" oninput="calcDulce()" /></div>
         <div class="form-group"><label>🔢 Unidades en el paquete</label><input type="number" id="dp-unidades" placeholder="50" min="1" oninput="calcDulce()" /></div>
         <div class="form-group"><label>📦 # Paquetes iniciales</label><input type="number" id="dp-paquetes" placeholder="2" min="1" value="1" oninput="calcDulce()" /></div>
-        <div class="form-group"><label>📈 Ganancia deseada %</label><input type="number" id="dp-margen" placeholder="50" min="0" oninput="calcDulce()" /></div>
+        <div class="form-group"><label>📈 Ganancia deseada %</label><input type="number" id="dp-margen" placeholder="50" min="0" oninput="calcDulce('margen')" /></div>
+        <div class="form-group"><label>🏷️ Precio de venta c/u</label><input type="number" id="dp-precio-calc" placeholder="Se calcula solo" min="0" oninput="calcDulce('precio')" style="color:var(--green);font-weight:800;" /></div>
       </div>
       <div id="dp-preview" style="display:none;margin-bottom:14px;padding:14px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:13px;">
         <div style="font-weight:800;color:var(--purple);margin-bottom:10px">🧮 Cálculo automático</div>
@@ -519,20 +520,33 @@
 
   // ════════════ DULCES ════════════
 
-  window.calcDulce = () => {
+  window.calcDulce = (origen='margen') => {
     const cb=parseFloat(document.getElementById('dp-costo-bolsa').value);
     const un=parseInt(document.getElementById('dp-unidades').value);
     const pq=parseInt(document.getElementById('dp-paquetes').value)||1;
-    const mg=parseFloat(document.getElementById('dp-margen').value);
     const pv=document.getElementById('dp-preview');
     if(!cb||!un||un<1){pv.style.display='none';return;}
-    const cu=cb/un; const venta=!isNaN(mg)&&mg>=0?Math.ceil(cu*(1+mg/100)):null;
+    const cu=cb/un;
     const total=un*pq;
+    let venta=null, mg=null;
+    if(origen==='precio'){
+      venta=parseFloat(document.getElementById('dp-precio-calc').value);
+      if(!isNaN(venta)&&venta>0){
+        mg=Math.round((venta/cu-1)*100);
+        document.getElementById('dp-margen').value=mg;
+      }
+    } else {
+      mg=parseFloat(document.getElementById('dp-margen').value);
+      if(!isNaN(mg)&&mg>=0){
+        venta=Math.ceil(cu*(1+mg/100));
+        document.getElementById('dp-precio-calc').value=venta;
+      }
+    }
     pv.style.display='block';
     document.getElementById('dp-c1').textContent=fmt(cu);
     document.getElementById('dp-c2').textContent=venta?fmt(venta):'—';
     document.getElementById('dp-c3').textContent=total+' uds';
-    document.getElementById('dp-c4').textContent=venta?fmt((venta-cu)*total):'—';
+    document.getElementById('dp-c4').textContent=(venta&&cu)?fmt((venta-cu)*total):'—';
   };
 
   window.agregarDulce = async () => {
@@ -540,15 +554,23 @@
     const cb=parseFloat(document.getElementById('dp-costo-bolsa').value);
     const un=parseInt(document.getElementById('dp-unidades').value);
     const pq=parseInt(document.getElementById('dp-paquetes').value)||1;
-    const mg=parseFloat(document.getElementById('dp-margen').value);
+    let mg=parseFloat(document.getElementById('dp-margen').value);
+    const precioManual=parseFloat(document.getElementById('dp-precio-calc').value);
     if(!nombre) return toast('⚠️ Escribe el nombre');
     if(isNaN(cb)||cb<=0) return toast('⚠️ Ingresa el costo del paquete');
     if(isNaN(un)||un<1) return toast('⚠️ Ingresa las unidades');
-    if(isNaN(mg)||mg<0) return toast('⚠️ Ingresa el % de ganancia');
-    const costo=cb/un; const venta=Math.ceil(costo*(1+mg/100)); const stock=un*pq;
+    const costo=cb/un;
+    let venta;
+    if(!isNaN(precioManual)&&precioManual>0){
+      venta=precioManual;
+      if(isNaN(mg)) mg=Math.round((venta/costo-1)*100);
+    } else if(!isNaN(mg)&&mg>=0){
+      venta=Math.ceil(costo*(1+mg/100));
+    } else { return toast('⚠️ Ingresa el % de ganancia o el precio de venta'); }
+    const stock=un*pq;
     await addDoc(collection(db,'productos'),{nombre,costo,venta,stock,margen:mg,creadoEn:Date.now()});
     toast(`🎉 "${nombre}" → vender a ${fmt(venta)} c/u`);
-    ['dp-nombre','dp-costo-bolsa','dp-unidades','dp-margen'].forEach(id=>document.getElementById(id).value='');
+    ['dp-nombre','dp-costo-bolsa','dp-unidades','dp-margen','dp-precio-calc'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('dp-paquetes').value='1';
     document.getElementById('dp-preview').style.display='none';
   };
